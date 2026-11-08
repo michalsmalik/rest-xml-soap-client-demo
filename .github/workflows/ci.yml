@@ -1,0 +1,23 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.9", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Unit tests (warnings are errors)
+        run: python -W error -m unittest -v
+      - name: Run the server and the client like a user would
+        run: |
+          python app.py --port 8000 & sleep 1
+          python client.py 2
+          curl -sf -H 'Accept: application/xml' localhost:8000/devices/2 | grep -q '<hostname>nb-sales-07</hostname>'
+          test "$(curl -s -o /dev/null -w '%{http_code}' localhost:8000/devices/999)" = 404
